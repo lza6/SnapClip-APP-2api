@@ -1,0 +1,24 @@
+# 逆向中间产物
+unzip/
+apktool_out/
+dart_strings.txt
+emu.log
+
+# 运行期产物
+work/
+*.mp4
+quota_*.mp4
+out_sample.mp4
+server_*.log
+__pycache__/
+*.pyc
+
+# 凭证（匿名 secret / JWT 不落库）
+accounts.json
+probe/token.txt
+probe/fb_*.json
+probe/upload_token.json
+
+# 本地环境
+.venv/
+node_modules/

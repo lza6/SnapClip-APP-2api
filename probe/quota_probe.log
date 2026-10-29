@@ -1,0 +1,5 @@
+{"round": 1, "count_before": 3, "status": "SUCCESS", "used": 0, "elapsed": 69.7, "failed_reason": null, "bytes": 4396644, "count_after": 2}
+{"round": 2, "count_before": 2, "status": "SUCCESS", "used": 0, "elapsed": 71.5, "failed_reason": null, "bytes": 4577049, "count_after": 1}
+{"round": 3, "count_before": 1, "status": "SUCCESS", "used": 0, "elapsed": 62.6, "failed_reason": null, "bytes": 4198534, "count_after": 0}
+{"round": 4, "count_before": 0, "error": "upstream 400 code=2100: Free user daily task quota used up", "count_after": 0}
+saved probe/quota_probe.json

@@ -1,0 +1,82 @@
+{
+ "base": "http://127.0.0.1:8940",
+ "concurrency": 10,
+ "rounds": 20,
+ "results": [
+  {
+   "scenario": "GET /health",
+   "n": 20,
+   "ok_codes": {
+    "200": 20
+   },
+   "rps": 110.8,
+   "p50_ms": 9.24,
+   "p95_ms": 170.45,
+   "p99_ms": 170.45,
+   "max_ms": 170.45,
+   "mean_ms": 87.81
+  },
+  {
+   "scenario": "GET /v1/models",
+   "n": 20,
+   "ok_codes": {
+    "200": 20
+   },
+   "rps": 683.3,
+   "p50_ms": 9.08,
+   "p95_ms": 20.22,
+   "p99_ms": 20.22,
+   "max_ms": 20.22,
+   "mean_ms": 13.47
+  },
+  {
+   "scenario": "GET /api/v1/themes",
+   "n": 20,
+   "ok_codes": {
+    "200": 20
+   },
+   "rps": 981.9,
+   "p50_ms": 8.63,
+   "p95_ms": 11.93,
+   "p99_ms": 11.93,
+   "max_ms": 11.93,
+   "mean_ms": 8.74
+  },
+  {
+   "scenario": "POST /v1/videos/generations (mock)",
+   "n": 20,
+   "ok_codes": {
+    "200": 20
+   },
+   "rps": 120.0,
+   "p50_ms": 7.61,
+   "p95_ms": 157.27,
+   "p99_ms": 157.27,
+   "max_ms": 157.27,
+   "mean_ms": 81.28
+  },
+  {
+   "scenario": "GET task 404",
+   "n": 20,
+   "ok_codes": {
+    "404": 20
+   },
+   "rps": 1050.0,
+   "p50_ms": 8.63,
+   "p95_ms": 10.66,
+   "p99_ms": 10.66,
+   "max_ms": 10.66,
+   "mean_ms": 8.57
+  }
+ ],
+ "stats": {
+  "submit": 20,
+  "submit_ok": 0,
+  "submit_err": 0,
+  "mock": 0,
+  "real": 0,
+  "pool_rotate": 0,
+  "accounts": 4,
+  "uptime": 3.4
+ }
+}

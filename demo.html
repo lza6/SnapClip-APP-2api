@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SnapClip 2API Demo</title>
+<style>
+  :root { --bg:#0f1115; --card:#181c23; --line:#262c36; --txt:#e6e9ee; --dim:#8b95a5; --acc:#4c8dff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+         background:var(--bg); color:var(--txt); }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; }
+  header h1 { font-size:18px; margin:0; }
+  header span { color:var(--dim); font-size:13px; }
+  main { display:grid; grid-template-columns: 380px 1fr; gap:20px; padding:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  label { display:block; font-size:13px; color:var(--dim); margin:12px 0 6px; }
+  select,input,button,textarea { width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--line);
+         background:#101419; color:var(--txt); font-size:13px; font-family:inherit; }
+  button { background:var(--acc); border:none; font-weight:600; cursor:pointer; margin-top:16px; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .row { display:flex; gap:10px; }
+  .row > * { flex:1; }
+  #status { font-size:13px; color:var(--dim); white-space:pre-wrap; margin-top:14px; line-height:1.6; }
+  video { width:100%; border-radius:10px; background:#000; }
+  .kpi { display:flex; gap:14px; font-size:12px; color:var(--dim); margin-bottom:12px; flex-wrap:wrap; }
+  .kpi b { color:var(--txt); font-size:14px; }
+  .bar { height:6px; background:#101419; border-radius:4px; overflow:hidden; margin-top:10px; }
+  .bar > i { display:block; height:100%; width:0; background:var(--acc); transition:width .4s; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<header>
+  <h1>SnapClip 2API Demo</h1>
+  <span id="mode">…</span>
+</header>
+<main>
+  <section class="card">
+    <label>模板（theme / item）</label>
+    <select id="theme"></select>
+    <label>生成模式</label>
+    <select id="modeSel">
+      <option value="free">free（每日免费额度）</option>
+      <option value="vidu">vidu（PRO，扣点）</option>
+      <option value="kling">kling（PRO，扣点）</option>
+      <option value="alibaba">alibaba（PRO，扣点）</option>
+      <option value="pixverse">pixverse（PRO，扣点）</option>
+    </select>
+    <label>图片（URL / 本地文件）</label>
+    <input id="imgUrl" placeholder="https://…/face.jpg 或留空选择本地文件" />
+    <input id="imgFile" type="file" accept="image/*" style="margin-top:8px" />
+    <button id="go">开始生成</button>
+    <div class="bar"><i id="prog"></i></div>
+    <div id="status">就绪</div>
+  </section>
+  <section class="card">
+    <div class="kpi">
+      <div>任务 <b id="kTask">-</b></div>
+      <div>状态 <b id="kState">-</b></div>
+      <div>耗时 <b id="kTime">-</b></div>
+      <div>网关 <b id="kMode">-</b></div>
+      <div>提交/成功/失败 <b id="kStats">-</b></div>
+    </div>
+    <video id="out" controls playsinline></video>
+    <div id="link" style="margin-top:10px;font-size:13px"></div>
+  </section>
+</main>
+<script>
+const THEMES = [
+  ["vid_viral_comic_chaos_260527","vid_viral_comic_chaos_260527/0015_comic_chibi_me_260707.mp4","Chibi Me（动漫化）"],
+  ["vid_gaze_heart_vibe_g_260227","vid_gaze_heart_vibe_g_260227/04_heart_cute_heart_260227.mp4","Heart Vibe（心动）"],
+  ["vid_echo_photo_revival_260529","vid_echo_photo_revival_260529/revival_real_person_260703.mp4","Photo Revival（复活照）"],
+  ["vid_ego_funny_face_g_260706","vid_ego_funny_face_g_260706/0007_face_laughing_260706.mp4","Funny Face（搞怪脸）"],
+  ["vid_viral_viral_dances_260611","vid_viral_viral_dances_260611/_dances_velvet_step_260911.mp4","Viral Dances（舞步）"],
+];
+const $ = (id) => document.getElementById(id);
+const sel = $("theme");
+THEMES.forEach(([t, i, n], k) => {
+  const o = document.createElement("option");
+  o.value = k; o.textContent = n; sel.appendChild(o);
+});
+
+let fileB64 = null;
+$("imgFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const buf = await f.arrayBuffer();
+  let bin = "";
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  fileB64 = "data:image/jpeg;base64," + btoa(bin);
+  $("status").textContent = `已选择本地图片：${f.name}（${(f.size/1024).toFixed(1)} KB）`;
+});
+
+async function refreshStats() {
+  try {
+    const s = await (await fetch("/stats")).json();
+    const h = await (await fetch("/health")).json();
+    $("kMode").textContent = h.mode;
+    $("mode").textContent = h.mode === "real" ? "模式：真实上游" : "模式：本地 mock";
+    $("kStats").textContent = `${s.submit}/${s.submit_ok}/${s.submit_err}`;
+  } catch (e) { /* ignore */ }
+}
+
+async function poll(id) {
+  for (let i = 0; i < 300; i++) {
+    const t = await (await fetch(`/v1/videos/generations/${id}`)).json();
+    $("kState").textContent = t.status;
+    $("prog").style.width = (t.progress || 0) + "%";
+    if (t.elapsed) $("kTime").textContent = t.elapsed + "s";
+    if (t.status === "SUCCESS") {
+      $("out").src = t.url + "?t=" + Date.now();
+      $("link").innerHTML = `<a href="${t.url}" download>下载 mp4</a> · 上游 s3Key: ${t.upstream_s3 || "-"}`;
+      $("status").textContent = "生成完成";
+      return;
+    }
+    if (t.status === "FAILED") {
+      $("status").textContent = "生成失败：" + (t.error || "unknown");
+      return;
+    }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  $("status").textContent = "轮询超时";
+}
+
+$("go").onclick = async () => {
+  const [themeId, themeItemId] = THEMES[Number(sel.value)];
+  const image = fileB64 || $("imgUrl").value.trim();
+  $("go").disabled = true;
+  $("status").textContent = "提交中…";
+  $("prog").style.width = "5%";
+  try {
+    const r = await fetch("/v1/videos/generations", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "snapclip/magic", image, theme_id: themeId,
+                             theme_item_id: themeItemId, mode: $("modeSel").value })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const t = await r.json();
+    $("kTask").textContent = t.id;
+    $("status").textContent = "任务已提交，轮询中…";
+    await poll(t.id);
+  } catch (e) {
+    $("status").textContent = "错误：" + e.message;
+  } finally {
+    $("go").disabled = false;
+    refreshStats();
+  }
+};
+refreshStats();
+</script>
+</body>
+</html>
