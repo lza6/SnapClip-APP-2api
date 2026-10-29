@@ -98,3 +98,41 @@ node test_plugin.mjs http://127.0.0.1:8940
 - PRO 档（vidu/kling/alibaba/pixverse）需账户点数，网关默认只用免费档，未验证付费路径。
 - `X-DEVICE-INFO` 服务端未强校验，网关不带；若上游后续收紧，需要在 `_headers` 里补设备 JSON。
 - 本方案不复制、不重打包 APK，仅复刻公开 HTTP 协议；上线前请自行评估合规与上游条款。
+
+## 7. 多图（step）与不可用能力
+
+### step 双图
+
+`step_api` 只有 `video_shift_g_250717` 的两个模板（`0006_shift_youth_250717.mp4` / `0002_shift_future_250717.mp4`），
+必须传 **2 张图**（单图 → `400 code=1200 theme item invalid`）。网关用 `images` 数组：
+
+```json
+{"model":"snapclip/step",
+ "images":["https://cdn/a.jpg","https://cdn/b.jpg"],
+ "theme_id":"video_shift_g_250717",
+ "theme_item_id":"video_shift_g_250717/0006_shift_youth_250717.mp4",
+ "mode":"free","wait":true}
+```
+
+实测：`SUCCESS`，143.4 s，`usedPoint=0`，产物 960×960 / 4.03 s / 1.12 MB（上游 key 带 `_mva` 后缀）。
+
+### 不可用能力（第二轮定论，别接）
+
+| 能力 | 状态 | 说明 |
+|---|---|---|
+| PRO 档 `mode=vidu/kling/alibaba/pixverse` | **不可用** | 匿名账号一律 `400 code=2003 your device is not support for pro`；与 `X-DEVICE-INFO` 无关，需 Google Play 内购账号 |
+| `chain` 续接 | **不可用** | 现有 298 个模板全是 `concatType=CONCAT_NO`，提交后 2 s 内 `FAILED/UNKNOWN`，**且白扣 1 次免费额度** |
+
+> 因此 new-api 侧模型列表建议只上 `snapclip-magic / figure / dance / emote / hug / transform / beastify / video-swap / harry-potter / step`，
+> 不要把 PRO 档模型暴露给用户，否则会持续返回 2003。
+
+## 8. 上游并发实测（决定渠道限流）
+
+| 配置 | wall | 成功 | 单任务 p50 | 备注 |
+|---|---|---|---|---|
+| 8 任务 · 并发 4 | 154.2 s | 8/8 | 71.9 s | 排队 43.9 s |
+| 8 任务 · 并发 8 | 73.9 s | 8/8 | 69.8 s | 排队 45.1 s，零 429 |
+
+- 账号池水平扩展有效：每匿名 secret 独立账号、独立 3 次/天额度。
+- 上游在 8 并发下无惩罚；网关 `--pool N` 建议 ≥ 并发数，避免额度抢跑。
+- 生产限流建议：单实例 2–4 QPS 起步，观察排队时长再放量。

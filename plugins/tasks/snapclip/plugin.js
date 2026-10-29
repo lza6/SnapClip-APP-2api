@@ -70,39 +70,45 @@ function gatewayBase(ctx) {
   return root.replace(/\/+$/, "");
 }
 
-/** 从 openai_responses / 原生请求体里取第一张图（URL 或 data-uri 均可）。 */
-function firstImage(req) {
-  if (!req) return "";
-  if (Array.isArray(req.images) && req.images.length) return trimmed(req.images[0]);
-  if (typeof req.image === "string" && trimmed(req.image)) return trimmed(req.image);
-  if (typeof req.input_reference === "string" && trimmed(req.input_reference)) return trimmed(req.input_reference);
+/** 收集请求里的图片（URL 或 data-uri 均可），step 类模板需要 2 张。 */
+function collectImages(req) {
+  const out = [];
+  const push = (v) => {
+    const s = trimmed(v);
+    if (s && out.indexOf(s) < 0) out.push(s);
+  };
+  if (!req) return out;
+  if (Array.isArray(req.images)) req.images.forEach(push);
+  push(req.image);
+  push(req.input_reference);
   const input = Array.isArray(req.input) ? req.input : [];
   for (let i = 0; i < input.length; i++) {
     const parts = (input[i] && input[i].content) || [];
     for (let j = 0; j < parts.length; j++) {
       if (parts[j] && parts[j].type === "input_image") {
         const v = parts[j].image_url;
-        return trimmed(typeof v === "object" && v ? v.url : v);
+        push(typeof v === "object" && v ? v.url : v);
       }
     }
   }
-  return "";
+  return out;
 }
 
 export function buildSubmitRequest(ctx) {
   const req = ctx.requestBody || {};
-  const image = firstImage(req);
-  if (!image) throw new Error("image is required (URL / data-uri / base64)");
+  const images = collectImages(req);
+  if (!images.length) throw new Error("image is required (URL / data-uri / base64)");
 
   const model = trimmed(req.model) || "snapclip-magic";
   const api = MODEL_API[model] || "magic";
   const payload = {
     model: "snapclip/" + api,
-    image: image,
+    image: images[0],
     theme_id: trimmed(req.theme_id) || DEFAULT_THEME,
     theme_item_id: trimmed(req.theme_item_id) || DEFAULT_ITEM,
     mode: trimmed(req.mode) || "free",
   };
+  if (images.length > 1) payload.images = images;
   return {
     url: gatewayBase(ctx) + "/v1/videos/generations",
     method: "POST",
@@ -171,14 +177,15 @@ export const native = {
     if (!ctx.body || ctx.body.kind !== "json") throw new Error("JSON body required");
     const body = ctx.body.value || {};
     const model = trimmed(body.model) || "snapclip-magic";
-    const image = firstImage(body);
-    if (!image) throw new Error("image is required");
+    const images = collectImages(body);
+    if (!images.length) throw new Error("image is required");
     return {
       kind: "submit",
       model: model,
       requestBody: {
         model: model,
-        image: image,
+        image: images[0],
+        images: images,
         theme_id: trimmed(body.theme_id),
         theme_item_id: trimmed(body.theme_item_id),
         mode: trimmed(body.mode) || "free",
@@ -215,15 +222,16 @@ export const protocols = {
       if (!ctx.body || ctx.body.kind !== "json") throw new Error("JSON body required");
       const req = ctx.body.value || {};
       const model = trimmed(ctx.model) || "snapclip-magic";
-      const image = firstImage(req);
-      if (!image) throw new Error("image is required");
+      const images = collectImages(req);
+      if (!images.length) throw new Error("image is required");
       return {
         kind: "submit",
         model: model,
         action: "image_to_video",
         requestBody: {
           model: model,
-          image: image,
+          image: images[0],
+          images: images,
           theme_id: trimmed(req.theme_id),
           theme_item_id: trimmed(req.theme_item_id),
           mode: trimmed(req.mode) || "free",

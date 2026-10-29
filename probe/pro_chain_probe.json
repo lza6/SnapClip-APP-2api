@@ -1,0 +1,49 @@
+{
+ "pro": [
+  {
+   "device_info": null,
+   "status": 400,
+   "body": "{\"code\":2003,\"message\":\"your device is not support for pro\"}"
+  },
+  {
+   "device_info": {
+    "androidId": "9774d56d682e549c",
+    "brand": "google",
+    "model": "Pixel 7",
+    "osVersion": "14"
+   },
+   "status": 400,
+   "body": "{\"code\":2003,\"message\":\"your device is not support for pro\"}"
+  },
+  {
+   "device_info": {
+    "deviceId": "9774d56d682e549c",
+    "deviceType": "android",
+    "androidId": "9774d56d682e549c"
+   },
+   "status": 400,
+   "body": "{\"code\":2003,\"message\":\"your device is not support for pro\"}"
+  }
+ ],
+ "step": {
+  "task_id": "01a1881a-c725-7c31-9b8b-3dbd138fb5d3",
+  "images": [
+   "202610/29/356bc9a544694ba99004c8db2e45e14ftmm0.jpg",
+   "202610/29/356bc9a544694ba99004c8db2e45e14fktb0.jpg"
+  ],
+  "result": {
+   "status": "SUCCESS",
+   "s3Key": "202610/29/vidu_01a1881a-c725-7c31-9b8b-3dbd138fb5d3_mva.mp4",
+   "createdAt": "2026-10-29T14:40:18.764Z",
+   "finishedAt": "2026-10-29T14:42:08.187Z",
+   "usedPoint": 0
+  },
+  "downloaded": "step_out.mp4"
+ },
+ "chain": {
+  "submit": {
+   "status": 400,
+   "body": "{\"code\":1104,\"message\":\"User's input images count not match the task required\"}"
+  }
+ }
+}

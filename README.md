@@ -16,7 +16,7 @@ server.py                  2API 网关（mock | real 双模，账号池，OpenAI
 demo.html                  中文 demo 页（选模板 → 上传图 → 生成 → 播放）
 bench.py                   本地压测（只压自己的网关，mock 模式）
 verify_demo.py             Playwright 真实浏览器验证
-test_plugin.mjs            new-api 插件契约测试（8 项断言）
+test_plugin.mjs            new-api 插件契约测试（9 项断言）
 plugins/tasks/snapclip/    new-api 任务插件（渠道类型 74）
 docs/REVERSE-REPORT.md     逆向报告（端点全表 / 认证链 / 计费 / 证据）
 docs/NEW-API-INTEGRATION.md 对接指南（部署 / 字段配置 / 验证四步 / 排错表）
@@ -79,7 +79,7 @@ GET  s3://cre8vid-user/<s3Key>
 | 网关 real 冒烟 | `POST :8941/v1/videos/generations {"wait":true}` | SUCCESS，114.8 s，3.8 MB |
 | demo 页 e2e（mock） | `python verify_demo.py :8940` | `state=SUCCESS`、`page_errors=[]`，截图 `demo_screenshot.png` |
 | demo 页 e2e（real） | `python verify_demo.py :8941 face.jpg` | `state=SUCCESS`、耗时 103.8 s、`video_src` 就绪，截图 `demo_screenshot_real.png` |
-| 插件契约 | `node test_plugin.mjs` | 8/8 PASS（submit/query/poll/artifact/缺参拒绝） |
+| 插件契约 | `node test_plugin.mjs` | **9/9 PASS**（submit/query/poll/artifact/缺参拒绝/多图透传） |
 | 成品抽帧 | `ffmpeg -ss 1.5 -frames:v 1` | `docs/sample_frame.png`（Pixi 风格化人像，确认非占位视频） |
 | 本地压测 | `python bench.py -c 20 -n 50`（mock） | 见下表 |
 
@@ -97,6 +97,25 @@ GET  s3://cre8vid-user/<s3Key>
 | GET task 404（错误路径） | 20 | 1413.8 | 11.22 ms | 12.12 ms | 12.12 ms |
 
 > 真实上游单任务 60–120 s 属上游 GPU 排队，与网关自身吞吐无关；压测只反映网关开销。
+
+### 第二轮：上游真实并发（`probe/pool_stress.py`，全部全新匿名账号、全程 `usedPoint=0`）
+
+| 配置 | wall | 成功 | 单任务 p50 | 单任务 max | token / 上传 / 提交 / 排队+生成 / 下载 |
+|---|---|---|---|---|---|
+| 8 任务 · 并发 4 | 154.2 s | **8/8** | 71.9 s | 85.2 s | 3.74 / 8.03 / 3.54 / 43.9 / 13.96 s |
+| 8 任务 · 并发 8 | 73.9 s | **8/8** | 69.8 s | 73.9 s | 3.10 / 5.92 / 2.57 / 45.1 / 11.16 s |
+
+并发 4 → 8 时 wall 近乎线性下降，上游排队时长不变（43.9 → 45.1 s），未见并发限流与 429。
+账号池可水平扩展：每个匿名 secret 就是一个独立账号（每日 3 次额度），网关 `--pool N` 自动轮换。
+
+### 第二轮：能力边界定论
+
+| 能力 | 结论 | 证据 |
+|---|---|---|
+| **PRO 档**（vidu/kling/alibaba/pixverse，40–600 点） | **匿名账号不可用**：`400 code=2003 your device is not support for pro`，与 `X-DEVICE-INFO` 无关（3 种设备头形态全部同样报错）；任意非 `FREE_USER` 的 `restricted_type` 都走 PRO 分支 → 需 Google Play 内购账号 | `probe/pro_chain_probe.json` |
+| **step 双图** | 可用：2 张图 → 960×960 / 4.03 s / 1.12 MB（`s3Key` 带 `_mva` 后缀），免费额度按 1 次计；网关 `images` 数组多图上传已实测（143.4 s，`usedPoint=0`） | `step_out.mp4` |
+| **chain 续接** | 现有目录不可用：298 个模板全为 `concatType=CONCAT_NO`；提交会在 2 s 内 `FAILED/UNKNOWN` **且白扣 1 次免费额度**；参数层缺 `s3_key_list` → `1104`，假 ID → `21010`，跨账号 task_id 不校验归属 | `probe/pro_chain_probe.json` |
+| `mode_type` 枚举校验 | 免费分支不校验（乱填 `WHATEVER` 也 200） | 同上 |
 
 ## 已知边界
 

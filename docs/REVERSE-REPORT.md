@@ -157,6 +157,58 @@ GET /v1/token/generate_image_token?count=1        # count ∈ [1,20]
 - 免费档无 PRO 模型的清晰度/时长优势：成品实测 **784×1176, 24 fps, 5.04 s, H.264+AAC, 4.2 MB**。
 - 违规/失败任务（例如非法 s3 key）→ `status=FAILED, failedReason=UNKNOWN`，`usedPoint=0`，不扣额度。
 
+## 6.1 PRO 档门控（第二轮实测）
+
+| 请求 | 结果 |
+|---|---|
+| `restricted_type=PRO_USER, mode_type=GENERATE_VIDU` | `400 code=2003 your device is not support for pro` |
+| 带上 `X-DEVICE-INFO`（3 种形态：空 / Android 设备 JSON / deviceId 形态） | **仍 400 code=2003**，与设备头无关 |
+| `restricted_type=NOPE`（任意非 FREE_USER 值） | 同样 `400 code=2003`，即「非 FREE_USER 一律走 PRO 分支」 |
+| `restricted_type=FREE_USER, mode_type=GENERATE_VIDU` | `200` 接受，按免费额度跑（服务端只看 `restricted_type`） |
+| `restricted_type=FREE_USER, mode_type=WHATEVER` | `200` 接受，`mode_type` 在免费分支不校验枚举 |
+
+> 结论：**PRO 档是账号级权限，不是设备级**。匿名 provider 账号天然没有 PRO 权限；
+> PRO 需要 Google Play 内购订单（`/order/api/v1/orders/android` 上报）叠加订阅状态，本报告不触碰付费路径。
+
+## 6.2 step 双图（第二轮实测）
+
+`step_api` 只有 2 个模板（`video_shift_g_250717` 的 Youth / Future），`inputCount=2`。
+用 2 张图 `POST /v1/task/step` 成功：
+
+- 单图提交 → `400 code=1200 theme item invalid`
+- 双图提交 → `SUCCESS`，`s3Key=…_mva.mp4`（多视频拼接产物），耗时 110 s，`usedPoint=0`
+- 成品规格：**960×960 / 4.03 s / H.264+AAC / 1.12 MB**（方形，与 magic 的 784×1176 竖屏不同）
+- 免费额度同样按「一次任务」计，不因双图翻倍
+
+## 6.3 chain 续接（第二轮实测）
+
+`chain_api` 的参数校验链与实测结论：
+
+| 用例 | 结果 |
+|---|---|
+| 只传 `task_id`（缺 `s3_key_list`） | `400 code=1104 User's input images count not match the task required` |
+| `task_id` 不存在 | `404 code=21010 ID为 "…" 的记录不存在` |
+| `task_id` 属于**别的账号** | 200 接受（按 ID 查记录，**不校验任务归属**） |
+| 传图 + 存在的 `task_id` | 接受，但轮询 2 s 内 `FAILED / failedReason=UNKNOWN`，**扣 1 次免费额度、不扣点** |
+| 同账号先 `step` 成功、再用该任务 `chain` | 仍然 `FAILED / UNKNOWN` |
+
+> 结论：当前 `app_id=ai-video` 目录下 **298 个模板全是 `concatType=CONCAT_NO`**，
+> 没有任何模板支持续接，因此 `chain` 端点在现有目录上无法产出成品（失败仍计一次免费额度，会白扣）。
+> 要真正用上 `chain`，需要等上游放出 `concatType=CONCAT_YES` 的模板。
+
+## 6.4 账号池与上游并发（第二轮实测）
+
+同一份脚本 `probe/pool_stress.py`，全部使用全新匿名账号（每账号 1 次任务），全程 `usedPoint=0`：
+
+| 配置 | wall | 成功 | 单任务 p50 | 单任务 max | 阶段均值（token / 上传 / 提交 / 排队+生成 / 下载） |
+|---|---|---|---|---|---|
+| 8 任务 · 并发 4 | 154.2 s | **8/8** | 71.9 s | 85.2 s | 3.74 s / 8.03 s / 3.54 s / 43.9 s / 13.96 s |
+| 8 任务 · 并发 8 | 73.9 s | **8/8** | 69.8 s | 73.9 s | 3.10 s / 5.92 s / 2.57 s / 45.1 s / 11.16 s |
+
+- 并发 4 → 8 时 wall 从 154.2 s 降到 73.9 s，**接近线性**；上游排队时长几乎不变（43.9 → 45.1 s），未见并发限流。
+- 匿名签发（token）、S3 直传、提交都随并发上升反而更快（连接复用效应），瓶颈只在 GPU 排队。
+- 8/8 零失败，未出现 429 / 风控；本报告不继续加码，避免对第三方服务造成压力。
+
 ## 7. 实测证据
 
 | 验证 | 命令/方式 | 结果 |
@@ -168,16 +220,21 @@ GET /v1/token/generate_image_token?count=1        # count ∈ [1,20]
 | 端到端出片 | `python snapclip_client.py` | `status=SUCCESS`，77.2 s（含上传+排队+出片），4.2 MB mp4 |
 | 成品校验 | `ffprobe out_sample.mp4` | h264 784×1176 24fps 5.04s + aac |
 | 身份幂等 | 同/异 secret 对比 | 同 secret → 同 uid；异 secret → 新 uid |
+| PRO 门控 | 3 种 `X-DEVICE-INFO` 形态 | 全部 `400 code=2003`，与设备头无关 |
+| step 双图 | `POST /v1/task/step` | SUCCESS，960×960 / 4.03 s / 1.12 MB |
+| chain 语义 | 5 种参数组合 | 缺图 1104、假 ID 21010、存在任务 2 s 内 FAILED 且扣额度 |
+| 账号池并发 | `probe/pool_stress.py` 8 任务 × 4/8 并发 | 8/8 成功、零失败，wall 154.2 s → 73.9 s |
 
 > 上述真实调用总计 < 10 次，均为免费额度，未触发任何付费路径。
 
 ## 8. 未验证 / 边界
 
-- `X-DEVICE-INFO` 的具体 JSON 结构与服务端强校验程度：**未验证**（不带该头全部业务接口正常）。
-- PRO 档（vidu/kling/alibaba/pixverse）真实出片：**未验证**（需账户点数，本报告不触发付费）。
-- `chain` / `step` 端点的任务链语义：**未验证**（目录内无 chain 模板可用）。
-- 同一匿名 uid 的额度耗尽后的错误码：见 `probe/quota_probe.json`（探针实测记录）。
-- 人脸检测/内容审核策略、图片最小尺寸限制：**未验证**。
+- **PRO 档真实出片**：未验证。已确认 PRO 被账号权限拦截（`code=2003`），需 Google Play 内购，
+  本报告不触发付费路径；四个后端（vidu/kling/alibaba/pixverse）的出片质量与点数扣减全部未知。
+- **`chain` 成功出片**：未验证（已确认现有目录无 `CONCAT_YES` 模板，提交必然 FAILED）。
+- `X-DEVICE-INFO` 的完整 JSON 结构：未验证，但已确认它对 PRO 门控与业务鉴权都没有影响。
+- 人脸检测阈值、图片最小尺寸、内容审核策略、单账号日额度重置时区：未验证。
+- 更高并发（16+）是否触发上游风控：未验证，本轮止步 8 并发（8/8 成功）。
 
 ## 9. 风险提示
 

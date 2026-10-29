@@ -124,15 +124,18 @@ class SnapClipClient:
             payload["s3_bucket"] = bucket
         return self._post(f"/v1/task/{api_id}", payload)["taskId"]
 
-    def chain(self, prev_task_id: str, theme_id: str, theme_item_id: str,
+    def chain(self, prev_task_id: str, theme_id: str, theme_item_id: str, image_keys: list[str] | None = None,
               restricted_type: str = "FREE_USER", mode_type: str = "GENERATE") -> str:
-        return self._post("/v1/task/chain", {
+        payload = {
             "task_id": prev_task_id,
             "theme_id": theme_id,
             "theme_item_id": theme_item_id,
             "restricted_type": restricted_type,
             "mode_type": mode_type,
-        })["taskId"]
+        }
+        if image_keys:
+            payload["s3_key_list"] = image_keys
+        return self._post("/v1/task/chain", payload)["taskId"]
 
     def poll(self, task_id: str, timeout_s: int = 300, interval_s: float = 3.0) -> dict:
         deadline = time.time() + timeout_s

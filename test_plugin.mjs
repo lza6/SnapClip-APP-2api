@@ -47,5 +47,15 @@ const arts = listArtifacts({ data: { result } });
 check("artifact url absolute", arts.length === 1 && arts[0].url.startsWith("http"), JSON.stringify(arts));
 check("missing image rejected", (() => { try { buildSubmitRequest({ baseUrl: BASE, requestBody: {} }); return false; } catch { return true; } })());
 
+// 多图（step 类模板）: images 数组应透传为 images 字段
+const multi = buildSubmitRequest({
+  baseUrl: BASE,
+  requestBody: { model: "snapclip-step", image: "a.jpg", images: ["a.jpg", "b.jpg"],
+                 theme_id: "video_shift_g_250717",
+                 theme_item_id: "video_shift_g_250717/0006_shift_youth_250717.mp4" },
+});
+const mbody = JSON.parse(multi.body);
+check("multi-image passthrough", Array.isArray(mbody.images) && mbody.images.length === 2 && mbody.model === "snapclip/step", JSON.stringify(mbody.images));
+
 console.log(`SUMMARY ok=${ok} fail=${fail}`);
 process.exit(fail ? 1 : 0);

@@ -1,59 +1,59 @@
 {
  "base": "http://127.0.0.1:8940",
  "concurrency": 10,
- "rounds": 20,
+ "rounds": 30,
  "results": [
   {
    "scenario": "GET /health",
-   "n": 20,
+   "n": 30,
    "ok_codes": {
-    "200": 20
+    "200": 30
    },
-   "rps": 110.8,
-   "p50_ms": 9.24,
-   "p95_ms": 170.45,
-   "p99_ms": 170.45,
-   "max_ms": 170.45,
-   "mean_ms": 87.81
+   "rps": 1479.9,
+   "p50_ms": 5.88,
+   "p95_ms": 9.08,
+   "p99_ms": 9.67,
+   "max_ms": 9.67,
+   "mean_ms": 5.98
   },
   {
    "scenario": "GET /v1/models",
-   "n": 20,
+   "n": 30,
    "ok_codes": {
-    "200": 20
+    "200": 30
    },
-   "rps": 683.3,
-   "p50_ms": 9.08,
-   "p95_ms": 20.22,
-   "p99_ms": 20.22,
-   "max_ms": 20.22,
-   "mean_ms": 13.47
+   "rps": 1744.2,
+   "p50_ms": 5.1,
+   "p95_ms": 6.62,
+   "p99_ms": 6.78,
+   "max_ms": 6.78,
+   "mean_ms": 5.36
   },
   {
    "scenario": "GET /api/v1/themes",
-   "n": 20,
+   "n": 30,
    "ok_codes": {
-    "200": 20
+    "200": 30
    },
-   "rps": 981.9,
-   "p50_ms": 8.63,
-   "p95_ms": 11.93,
-   "p99_ms": 11.93,
-   "max_ms": 11.93,
-   "mean_ms": 8.74
+   "rps": 1889.8,
+   "p50_ms": 4.63,
+   "p95_ms": 5.65,
+   "p99_ms": 5.93,
+   "max_ms": 5.93,
+   "mean_ms": 4.64
   },
   {
    "scenario": "POST /v1/videos/generations (mock)",
-   "n": 20,
+   "n": 30,
    "ok_codes": {
-    "200": 20
+    "200": 30
    },
-   "rps": 120.0,
-   "p50_ms": 7.61,
-   "p95_ms": 157.27,
-   "p99_ms": 157.27,
-   "max_ms": 157.27,
-   "mean_ms": 81.28
+   "rps": 2228.7,
+   "p50_ms": 3.45,
+   "p95_ms": 6.03,
+   "p99_ms": 6.08,
+   "max_ms": 6.08,
+   "mean_ms": 3.8
   },
   {
    "scenario": "GET task 404",
@@ -61,22 +61,22 @@
    "ok_codes": {
     "404": 20
    },
-   "rps": 1050.0,
-   "p50_ms": 8.63,
-   "p95_ms": 10.66,
-   "p99_ms": 10.66,
-   "max_ms": 10.66,
-   "mean_ms": 8.57
+   "rps": 2230.2,
+   "p50_ms": 3.84,
+   "p95_ms": 4.6,
+   "p99_ms": 4.6,
+   "max_ms": 4.6,
+   "mean_ms": 3.93
   }
  ],
  "stats": {
-  "submit": 20,
+  "submit": 31,
   "submit_ok": 0,
   "submit_err": 0,
-  "mock": 0,
+  "mock": 1,
   "real": 0,
   "pool_rotate": 0,
   "accounts": 4,
-  "uptime": 3.4
+  "uptime": 242.3
  }
 }

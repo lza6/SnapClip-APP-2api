@@ -130,6 +130,7 @@ MODE = "mock"
 class GenRequest(BaseModel):
     model: str = "snapclip/magic"
     image: str = ""
+    images: list[str] = []
     theme_id: str = "vid_viral_comic_chaos_260527"
     theme_item_id: str = "vid_viral_comic_chaos_260527/0015_comic_chibi_me_260707.mp4"
     mode: str = "free"
@@ -221,7 +222,7 @@ def _decode_image(image: str) -> tuple[str, bool]:
     return str(path), True
 
 
-def _run_task(task_id: str, req: GenRequest, img_path: str, temp_image: bool = False) -> None:
+def _run_task(task_id: str, req: GenRequest, images: list[tuple[str, bool]]) -> None:
     task = TASKS[task_id]
     t0 = time.time()
     if MODE == "mock":
@@ -238,9 +239,14 @@ def _run_task(task_id: str, req: GenRequest, img_path: str, temp_image: bool = F
     secret, token = POOL.acquire()
     client = SnapClipClient(token=token)
     try:
-        bucket, key = client.upload_image(img_path)
+        bucket = None
+        keys: list[str] = []
+        for path, _ in images:
+            b, k = client.upload_image(path)
+            bucket = bucket or b
+            keys.append(k)
         task["progress"] = 20
-        upstream_id = client.submit(api, [key], req.theme_id, req.theme_item_id,
+        upstream_id = client.submit(api, keys, req.theme_id, req.theme_item_id,
                                     bucket=bucket, restricted_type=restricted, mode_type=mode_type)
         task.update(upstream_id=upstream_id, progress=35)
         data = client.poll(upstream_id, timeout_s=420, interval_s=3)
@@ -265,11 +271,12 @@ def _run_task(task_id: str, req: GenRequest, img_path: str, temp_image: bool = F
             STATS["submit_err"] += 1
         task.update(status="FAILED", error=str(exc)[:300], elapsed=round(time.time() - t0, 2))
     finally:
-        if temp_image:
-            try:
-                os.unlink(img_path)
-            except OSError:
-                pass
+        for path, temp in images:
+            if temp:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
 
 
 @app.post("/v1/videos/generations")
@@ -280,10 +287,18 @@ async def generate(req: GenRequest) -> dict:
     TASKS[task_id] = {"id": task_id, "status": "PENDING", "progress": 0,
                       "created": int(time.time()), "model": req.model, "mode": req.mode}
     if MODE == "mock":
-        _executor.submit(_run_task, task_id, req, "")
+        _executor.submit(_run_task, task_id, req, [])
     else:
-        img, temp = _decode_image(req.image)
-        _executor.submit(_run_task, task_id, req, img, temp)
+        sources = req.images or ([req.image] if req.image else [])
+        if not sources:
+            TASKS[task_id].update(status="FAILED", error="image required")
+            raise HTTPException(400, "image required (url | b64 | data-uri | local path)")
+        try:
+            images = [_decode_image(src) for src in sources]
+        except HTTPException as exc:
+            TASKS[task_id].update(status="FAILED", error=str(exc.detail))
+            raise
+        _executor.submit(_run_task, task_id, req, images)
     if req.wait:
         for _ in range(600):
             if TASKS[task_id]["status"] in ("SUCCESS", "FAILED"):
