@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 lza6
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Research & Interoperability Notice / 研究与互操作声明
+
+This repository contains protocol-analysis notes and client code produced by
+observing an application's own HTTP traffic, for interoperability and security
+research purposes only.
+
+- 本仓库 **不包含、不分发、不重新打包** 任何 APK 本体或反编译产物。
+- 不包含任何第三方账号凭证、付费内容或他人数据；文中出现的公钥/公开 API key
+  均为应用自身内置的公开标识，且其对应注册能力在该项目中已关闭。
+- 上游服务为第三方生产系统。将本代码用于生产前，请自行确认其服务条款、
+  当地法律法规与合规要求；禁止用于骚扰、欺诈、绕过访问控制或任何侵权用途。
+- 作者不对任何滥用行为及其后果承担责任。如相关权利方有异议，请提交 issue，
+  作者将及时删除相关材料。

@@ -20,8 +20,19 @@ test_plugin.mjs            new-api 插件契约测试（9 项断言）
 plugins/tasks/snapclip/    new-api 任务插件（渠道类型 74）
 docs/REVERSE-REPORT.md     逆向报告（端点全表 / 认证链 / 计费 / 证据）
 docs/NEW-API-INTEGRATION.md 对接指南（部署 / 字段配置 / 验证四步 / 排错表）
+docs/NEW-API-HANDOFF.md    **交接执行单**（渠道类型 74 的 4 处 Go 改动 + 验收 4 步 + 回滚，可直接照着做）
+docs/sample_frame.png      真实成品抽帧（784×1176 竖屏）
 probe/                     探测原始响应（api_meta / 分类 / 模板 / 额度边界）
 ```
+
+## 怎么用这份仓库
+
+| 你的目的 | 看哪个文件 |
+|---|---|
+| 只想把 SnapClip 接进 new-api | **`docs/NEW-API-HANDOFF.md`**（照着执行，含 4 处 Go 改动与验收脚本） |
+| 想知道协议怎么还原的 | `docs/REVERSE-REPORT.md` |
+| 想理解渠道字段、计费、排错 | `docs/NEW-API-INTEGRATION.md` |
+| 想自己跑 demo / 压测 | 下面「快速开始」 |
 
 ## 快速开始
 
